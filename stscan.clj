@@ -1,4 +1,7 @@
-(add-classpath "file:///C:/MySoft/clojure/clojure-contrib.jar")
+;(add-classpath "file:///C:/MySoft/clojure/clojure-contrib.jar")
+(add-classpath "file:///home/novosma/Stuff/jtsapi/IBJts/dst/ib_tests.jar")
+(add-classpath "file:///home/novosma/Stuff/jtsapi/IBJts/jtsclient.jar")
+
 
 (ns dnld
 ;;   (:require clojure.contrib.duck-streams)
@@ -15,7 +18,11 @@
   '(java.net URL)
   '(java.io StringWriter FileReader BufferedReader InputStreamReader File)  
   '(java.util Date Calendar)
-  '(java.util.regex Pattern))
+  '(java.text SimpleDateFormat)
+  '(java.util.regex Pattern)
+  '(com.ib.client Order Contract EClientSocket)
+  '(tests ApiCallback)
+)
 
 (def *df* (new java.text.SimpleDateFormat "yyyy-MM-dd"))
 
@@ -228,22 +235,93 @@
 (def *time-out-s* 30)
 
 (defn get-id [] (swap! *ids* inc))
-(defn sync-bridge [fn & [n]]
-  (let [n (if n n 1)
-	id (get-id)]
-    (swap! *tbl-req* assoc id (new java.util.concurrent.CountDownLatch(n)))
-    (fn)
-    (.await (get  @*tbl-req* id) *time-out-s* java.util.concurrent.TimeUnit/SECONDS)
-    (get @*tbl-res* id)))
+
  
 (defmacro fill-jfields [obj field-vals]
   (let [oname (gensym "obj")]
     `(let [~oname ~obj]
-       ~@(map  (fn [pair] `(set! (. ~oname ~(first pair) ~(second pair)))) (partition 2 field-vals))
+       ~@(map  (fn [pair] `(set! (.  ~oname ~(first pair)) ~(second pair)  )) (partition 2 field-vals))
        ~oname)))
 
-       
+
+
+(defn response-completed [reqId]
+  (when-let [latch (get @*tbl-req* reqId)]    
+    (.countDown latch)))
+
+(defn complete-req-res [req-id] 
+  (let [res (get @*tbl-res* req-id)]
+    (swap! *tbl-req* dissoc req-id)
+    (swap! *tbl-res* dissoc req-id)
+    res))
+
+(defn sync-bridge [id fn & [n]]
+  (let [n (if n n 1)]
+    (swap! *tbl-req* assoc id (new java.util.concurrent.CountDownLatch n))
+    (fn)
+    (.await (get  @*tbl-req* id) *time-out-s* java.util.concurrent.TimeUnit/SECONDS)
+    (complete-req-res  id)))
+
+
+(defn on-hist-data [reqId date open high low close volume count WAP hasGaps]
+  (if (< open 0)
+     (response-completed reqId)
+    (let [res (get @*tbl-res* reqId)]
+      (if res
+      (let [new-v  (conj 
+		    res
+		    {:reqId reqId :date date :open open :high high :low  low :close close :volume volume :count count
+		       :WAP WAP :hasGaps hasGaps})]
+	;(println "res")
+	(swap! *tbl-res* assoc reqId new-v))		    
+       (swap!  *tbl-res* assoc reqId 
+	     [{:reqId reqId :date date :open open :high high :low  low :close close :volume volume :count count
+		       :WAP WAP :hasGaps hasGaps}])
+))))
+
+(defn on-error [id  errorCode errorString]
+  (response-completed id)
+  (println (str id " " errorCode " " errorString)))
+
+(def *eclient* (new EClientSocket 
+		    (proxy [ApiCallback] []
+			(historicalData [reqId date open high low close volume count WAP hasGaps ]
+					( on-hist-data reqId date open high low close volume count WAP hasGaps ))
+			(error  [id  errorCode errorString]
+				(on-error id  errorCode errorString)))))
+				
+
+
+(def *host* "localhost")
+(def *port* 7496)
+(def *client* 0)
+
+
+					
+(defn start-session []
+ (.eConnect *eclient* *host* *port* *client*))
+
+(defn stop-session []
+  (.eDisconnect *eclient*))
     
+(defn stk [sym]
+  (fill-jfields (new Contract)
+		[m_symbol  (.toUpperCase (str sym))
+		 m_secType  "STK"
+		 m_currency "USD"
+		 m_exchange  "SMART"]))
+
+(defn get-hist-data [contract & [endDateTime durationStr]]
+  (let [req-id (get-id)
+	end-date (if endDateTime (parse-date endDateTime) 
+		     (.format (new SimpleDateFormat "yyyyMMdd hh:mm:ss") (new Date)))]
+    (sync-bridge req-id 
+		 (fn []
+		   (.reqHistoricalData *eclient* 
+				       req-id  contract end-date  
+				       "2 D" "1 day" (if (= (.m_secType contract) "STK") "TRADES" "MIDPOINT")
+							    1 1)))))
+  
   
 
 
@@ -276,6 +354,4 @@
 	  
 	
 ;; (doall (.delete (filter #(= 22 (.get (calendar (.lastModified %)) Calendar/DATE))  (.listFiles  (new File "/home/novosma/Stuff/clojure/nyse-data")))))
-
 ;; (vector-pmap (fn (s) (ignore-err (get-stk-file s "/home/novosma/Stuff/clojure/nyse-data"))) (vec (read-line "/home/novosma/Stuff/clojure/nyse-syms-cleared.txt")))
-
