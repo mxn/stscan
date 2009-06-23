@@ -21,7 +21,8 @@
 
 (def *rt-price-gg-re* #"<span class=\"pr\"><span id.*?>(\d+\.\d+)<")
 (def *rt-open-pr-gg-re* (. Pattern compile "class=key>Open:.*?class=val>(\\d+\\.\\d*).*?</td>" (. Pattern MULTILINE)))
-(def *rt-time-gg-re* #"<span style=\"white-space:normal;\" id=.*?(\d+:\d+[AP]M) EDT</span")
+(def *rt-time-gg-re* (. Pattern compile "Real-time:.*?(\\d+:\\d+[AP]M) EDT</span" (. Pattern MULTILINE)))
+; #"<span style=\"white-space:normal;\" id=.*?(\d+:\d+[AP]M) EDT</span")
 
 
 (def *num-workers* 7)
@@ -106,19 +107,21 @@
 (defmacro ignore-err [body]
   `(try ~body (catch Throwable e#)))
 
+ 
+
+
+(defn split-for-n [v n]
+  (let [delta (Math/ceil (/ (count v) n ))
+	vlen (count v)]
+  (map #(subvec v (* delta %) (min vlen (* delta (+ 1 %)))) (range (min n (Math/ceil (/ vlen delta)))))))
+
 (defn vector-pmap [f v]
-  (let [n *num-workers*
-        sectn (int (Math/ceil (/ (count v) n)))
-        agents (map #(agent (subvec v
-                                    (* sectn %)
-                                    (min (count v) (+ (* sectn %)
-sectn))))
-                    (range n))]
+  (let [n *num-workers*        
+        agents (split-for-n v n)]
     (doseq [a agents]
       (send a #(doall (map f %))))
     (apply await agents)
-    (into [] (apply concat (map deref agents))))) 
-
+    (into [] (apply concat (map deref agents)))))
 
 ;(defn reas
 
@@ -215,6 +218,34 @@ sectn))))
     (median ocs)))
 
 (def *nas-dir* "/home/novosma/Stuff/clojure/nas-data/")
+
+;;;;;;
+
+(def *tbl-req* (atom {}))
+(def *tbl-res* (atom {}))
+
+(def *ids* (atom 1))
+(def *time-out-s* 30)
+
+(defn get-id [] (swap! *ids* inc))
+(defn sync-bridge [fn & [n]]
+  (let [n (if n n 1)
+	id (get-id)]
+    (swap! *tbl-req* assoc id (new java.util.concurrent.CountDownLatch(n)))
+    (fn)
+    (.await (get  @*tbl-req* id) *time-out-s* java.util.concurrent.TimeUnit/SECONDS)
+    (get @*tbl-res* id)))
+ 
+(defmacro fill-jfields [obj field-vals]
+  (let [oname (gensym "obj")]
+    `(let [~oname ~obj]
+       ~@(map  (fn [pair] `(set! (. ~oname ~(first pair) ~(second pair)))) (partition 2 field-vals))
+       ~oname)))
+
+       
+    
+  
+
 
 ;; (ds/write-lines "/home/novosma/Stuff/clojure/ocs.txt" (doall (map #(vector % (oc-med (str *nas-dir* % ".csv"))) (take 10  (ds/read-lines "/home/novosma/Stuff/clojure/nas-good.txt")))))
 
