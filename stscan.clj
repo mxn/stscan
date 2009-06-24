@@ -1,6 +1,6 @@
 ;(add-classpath "file:///C:/MySoft/clojure/clojure-contrib.jar")
-(add-classpath "file:///home/novosma/Stuff/jtsapi/IBJts/dst/ib_tests.jar")
 (add-classpath "file:///home/novosma/Stuff/jtsapi/IBJts/jtsclient.jar")
+(add-classpath "file:///home/novosma/Stuff/jtsapi/IBJts/dst/ib_tests.jar")
 
 
 (ns dnld
@@ -283,12 +283,23 @@
   (response-completed id)
   (println (str id " " errorCode " " errorString)))
 
+(def *order-id* (atom nil))
+
+(defn next-order-id [& [id]]
+  (if id 
+    (swap! *order-id* (fn [_]  (inc id)))
+    (swap! *order-id* inc)))
+
+  
+
 (def *eclient* (new EClientSocket 
 		    (proxy [ApiCallback] []
 			(historicalData [reqId date open high low close volume count WAP hasGaps ]
 					( on-hist-data reqId date open high low close volume count WAP hasGaps ))
 			(error  [id  errorCode errorString]
-				(on-error id  errorCode errorString)))))
+				(on-error id  errorCode errorString))
+			(nextValidId [ordId] (next-order-id ordId))
+)))
 				
 
 
@@ -311,18 +322,84 @@
 		 m_currency "USD"
 		 m_exchange  "SMART"]))
 
-(defn get-hist-data [contract & [endDateTime durationStr]]
+(defn get-hist-data [contract durationStr barSizeStr & endDateTime ]
   (let [req-id (get-id)
 	end-date (if endDateTime (parse-date endDateTime) 
-		     (.format (new SimpleDateFormat "yyyyMMdd hh:mm:ss") (new Date)))]
+		    (str  (.format (new SimpleDateFormat "yyyyMMdd") (new Date)) " 23:59:59"))]
     (sync-bridge req-id 
 		 (fn []
 		   (.reqHistoricalData *eclient* 
 				       req-id  contract end-date  
-				       "2 D" "1 day" (if (= (.m_secType contract) "STK") "TRADES" "MIDPOINT")
+				       durationStr barSizeStr (if (= (.m_secType contract) "STK") "TRADES" "MIDPOINT")
 							    1 1)))))
   
   
+(defn stop [price]
+  (fill-jfields (new Order)
+		[m_orderType "STP"
+		 m_auxPrice price]))
+
+(defn limit [price]
+  (fill-jfields (new Order)
+		[m_orderType "LMT"
+		 m_lmtPrice price]))
+
+(defn mkt-close []
+  (fill-jfields (new Order)
+		[m_orderType "MKTCLS"]))
+
+
+(defn stop-limit [stop-price limit-price]
+  (fill-jfields (new Order)
+		[m_orderType "STPLMT"
+		 m_lmtPrice limit-price
+		 m_auxPrice stop-price]))
+
+(def *oca-grp* "GPDN")
+
+(defn fill-order-attrs [action  qty order]
+  (fill-jfields order
+		[m_orderId (next-order-id)
+		 m_clientId *client*
+		 m_action action
+		 m_totalQuantity qty		
+		 ]))
+
+(defn close-action [entry-action]
+  (condp =  entry-action
+	"BUY" "SELL"
+	"SELL" "BUY"
+	"SSHORT" "BUY"))
+
+
+
+(defn bracket-orders [action contract qty eord & [close-orders]]
+  (fill-order-attrs action  qty eord)
+  (fill-jfields eord [m_transmit false, m_tif "DAY", m_transmit (if close-orders false true)
+		       m_ocaGroup *oca-grp*
+		      m_ocaType 1])
+  (.placeOrder *eclient* (.m_orderId eord) contract eord)
+  (let [par-id (.m_orderId eord)]
+    (when close-orders      
+      (doall (map (fn [cl-ord] 		    
+		   ; (println "par: " par-id)
+		    (fill-order-attrs  (close-action action)  qty cl-ord)
+		    ;(println "order-attrs is filled: " par-id)
+		    (fill-jfields cl-ord [m_parentId par-id, 
+					  m_tif "GTC",
+					  m_transmit true])
+		    (.placeOrder *eclient*  (.m_orderId cl-ord) contract cl-ord))
+	     close-orders
+	     )))))
+    
+(defn buy-bracket [contract qty eord & [close-orders]]
+    (bracket-orders "BUY" contract qty eord  close-orders))
+
+
+(defn sell-bracket [contract qty eord & [close-orders]]
+  (bracket-orders "SELL" contract qty eord  close-orders))
+
+
 
 
 ;; (ds/write-lines "/home/novosma/Stuff/clojure/ocs.txt" (doall (map #(vector % (oc-med (str *nas-dir* % ".csv"))) (take 10  (ds/read-lines "/home/novosma/Stuff/clojure/nas-good.txt")))))
