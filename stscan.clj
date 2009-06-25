@@ -34,53 +34,6 @@
 
 (def *num-workers* 7)
 
-(def *good-syms* (vec (map  str 
-'[ZQK YUM XTO XRX XRAY XOM XL X WYE WY WWY WSM WPS WPI WOR WMT WMS WMI WMB WM
-	WLT WHR WGR WG WFT WFR WFC WEN WDC WB WAT WAG VZ VTS VPI VOD VNO VMC VLO VLCCF
-	VFC VAR UVN UTX UST USG USB URI UNP UNM UNH UNA UN UHS UBB TYC TXU TXT TXN TWX
-	TV TSO TSM TSG TSA TROW TRI TRB TOT TOM TOL TNE TMX TMO TMA TM TLM TK TJX TIN
-	TIF TIE THX TGT TER TE TDW TBL TAP TALX T SYY SYMC SYK SWY SWN SWFT SVU SUN
-	SUG SU STZ STT STRA STR STN STLD STJ STI STBA STA SSP SSCC SRE SRCL SPW SPSS
-	SPLS SPG SPF SOV SO SNV SNPS SNIC SNE SNDK SLM SLE SLB SKYW SKS SIVBE SII SIGI
-	SIE SIAL SHW SHPGY SHFL SGY SGP SGMS SFY SFA SEPR SEIC SEE SEBL SCSS SCHW SBUX
-	SBL SBAC SAP SAFC S RYL RYAAY RX RTN RSH RSG RS RRC ROST ROK ROH RMD RMBS RL
-	RIMM RIG RHI RGLD RF REGN RE RDN RDC RCL RBK RBAK RAI RA QSII QQQQ QLGC QCOM
-	PZZA PXD PX PWAV PVH PTRY PTEN PSUN PSTI PSS PSA PRX PPP PPL PPG PPDI POT PNW
-	PNRA PNR PNC PMI PLLL PLD PLCM PLCE PKX PKI PIXR PHM PHG PH PGR PGN PG PFE
-	PFCB PETM PEP PEG PDX PDLI PDG PDE PDCO PD PCZ PCU PCP PCL PCH PCG PCAR PBI
-	PBG PAYX PAAS OXY OSIP OSI OSG OS ORLY ORI ORCL OPWV ONXX OMC OKE ODP OCR NYT
-	NYB NXY NWS NWRE NWL NVS NVLS NVDA NUE NU NTRS NTAP NSM NSC NOVN NOV NOK NOC
-	NKE NICE NI NGAS NFX NFI NFB NEW NEM NE NDE NCX NCR NCC NBR NBL NBIX NAV NATI
-	N MYL MXIM MVL MVK MUR MU MTH MTG MT MSTR MSFT MSCC MRO MRK MOT MOGN MO MNT
-	MNST MNI MMM MMC MLS MLNM MLM MLHR MIK MI MHP MHO MHK MGM MFE MERQE MER MEL
-	MEE MEDX MEDI MDT MDR MDG MDC MCK MCHP MCD MBI MATK MAT MAS MAR LYO LXK LUV
-	LUK LTR LTD LSS LRY LRCX LPX LPNT LOW LNCR LNC LMT LM LLY LLTC LLL LIZ LIN LH
-	LEN LEH LEA LDG LAMR KWK KSS KSE KRI KRB KR KOSP KO KMX KMP KMI KMG KMB KLAC
-	KIM KEY KEP KCS KBH K JWN JPM JOSB JOE JNY JNPR JNJ JNC JLG JEC JCP JCI JBL
-	JBHT JAH IVGN ITW ITT ISCA IRF IR IPCR IP INTU INTC INGR INFY IMDC IMCL IM IIF
-	IGT IFN IDTI ICOS ICBC IBM IACI HYSL HUM HSY HSC HRS HRB HPQ HP HOV HOT HON
-	HOLX HOC HNZ HNT HMT HMA HLT HIG HET HD HCBK HCA HBC HBAN HAR HANS HAL HAIN
-	GYI GXP GWW GTRC GTK GT GSK GSF GS GR GPS GNTX GNSS GM GLW GLG GLBL GIS GILD
-	GGP GGC GG GFI GENZ GE GDW GDT GD GCI FWLT FTO FST FSH FRX FRE FPL FOSL FO FNM
-	FNF FMX FLSH FLEX FL FITB FISV FHN FFIV FE FDX FDO FDC FD FCX FBR FBN FAST
-	EXPD EXP EXC EXBD EWJ ETR ETN ETH ET ESV ESS ESRX ESI ERTS ERICY EQT EQR EPEX
-	EPD EP EOP EOG ENER EMR EMN EMC ELX ELN EL EK EIX EFX EDS EDMC EDE ED ECL EC
-	EBAY EAT EAS E DVN DUK DTE DST DRQ DRIV DRI DPTR DOX DOW DOV DO DNB DNA DLX
-	DLTR DJ DISH DIS DHR DHI DGX DG DEO DELL DE DDS DDR DD DCX DBRN DBD DB D CYMI
-	CXW CWTR CVX CVTX CVS CVH CVG CVC CTXS CTX CTSH CTHR CTAS CSX CSGS CSG CSCO
-	CSC CREE CRDN CPWM CPS CPRT CPB COST COP COO COGN COG COF COCO CNX CNT CNL CNI
-	CNF CNB CMX CMVT CMTL CMS CMI CMCSK CMCSA CMC CMA CLX CLF CL CKFR CIN CIB CI
-	CHS CHRW CHKP CHK CHIR CFFN CFC CERN CEPH CEM CELG CEG CECO CDWC CDNS CDIS CD
-	CCU CCL CCK CCJ CCI CC CBT CBST CBRL CBH CBE CB CAT CAM CAL CAKE CAI CAH CA C
-	BZH BZF BYD BXP BWA BUD BSX BSC BRO BRCM BR BPT BPOP BP BOW BOOM BOL BOBJ BNI
-	BMY BMHC BMET BMC BLS BLL BK BJS BJ BIIB BHP BHI BER BEN BEC BEAV BDX BDK BCRX
-	BCR BCO BC BBY BBT BBBY BAX BAC BA AZO AZN AYE AXP AXL AXE AVT AVP AVID AVB AU
-	ATYT ATW ATVI ATMI AT ASO ASN ASML ASH ASD ARTC ARI APSG APPB APOL APD APCC
-	APC APA AOS AOC ANN ANF AMZN AMTD AMT AMR AMLN AMGN AMG AMED AMD AMB AMAT AM
-	ALV ALTR ALL ALKS ALK AL AIV AIG AHC AGN AFL AFG AFFX AF AET AES AEP AEOS AEM
-	AEE ADTN ADSK ADRX ADP ADM ADI ADCT ADBE ACXM ACV ACS ACI ACF ACE ACAS AC ABX
-	ABT ABS ABK ABI ABGX ABFS ABC AAUK AAPL AAI AA])))
-
 (defn parse-date [dt]
   (cond 
    (string? dt) (.parse *df* dt)
@@ -90,6 +43,9 @@
 (defn calendar [& [dt]]
   (let [c (Calendar/getInstance)]
   (.setTime c (if dt (parse-date dt) (new Date))) c))
+
+(defn format-date [frmt-str & [date]]
+  (.format (new SimpleDateFormat frmt-str)  (if date date (new Date))))
 
 (defn mk-quote-url [stock-sym & [start-date end-date]]
   (let [sym (.toUpperCase (str stock-sym))
@@ -124,7 +80,7 @@
 
 (defn vector-pmap [f v]
   (let [n *num-workers*        
-        agents (split-for-n v n)]
+        agents (map agent (split-for-n v n))]
     (doseq [a agents]
       (send a #(doall (map f %))))
     (apply await agents)
@@ -218,13 +174,56 @@
 
 
 
-(defn oc-med [file]
+(defn oc-med [hist-data]
   (let [ocs
-	(doall (map #(let [arange (- (:high %)  (:low %))] (if (> arange 0)  (Math/abs (/ (- (:close %) (:open %)) arange)) 0))
-		    (parse-yhoo-stock-csv file)))]
+	(doall (map #(let [arange (- (:high %)  (:low %))] (if (> arange 0)  (Math/abs (/ (- (:close %) (:open %)) arange)) 0)) hist-data))]
     (median ocs)))
 
-(def *nas-dir* "/home/novosma/Stuff/clojure/nas-data/")
+(def *data-dir* "/home/novosma/Stuff/clojure/data/")
+;(def *sym-file* "/home/novosma/Stuff/clojure/good-syms.txt")
+(def *sym-file* "/home/novosma/Stuff/clojure/good-syms-tmp.txt")
+(def *stk-analysis-file-prefix* "/home/novosma/Stuff/clojure/analysis")
+
+
+(defn stk-file-analysis [file]
+  (let 
+      [sym (second (re-find  #"([a-zA-Z]+).csv" (.getName file)))
+       hist-data (parse-yhoo-stock-csv file)
+       oc (oc-med hist-data)
+       last-date (format-date "yyyyMMdd" (:date (first hist-data)))
+       last-close (:close (first hist-data))
+       liquidity (* (:close (first hist-data)) (:volume (first hist-data)))
+       avg-range (avg (map  #(- (:high %) (:low %)) hist-data))]
+    {:sym sym :oc-median oc :avg-range avg-range :last-date last-date :last-close last-close :liquidity liquidity}))
+
+(def *min-liquidity* 2000000)
+(def *min-range-to-close-ratio* 0.02)
+(def *min-med-oc* 0.45)
+
+(defn filter-for-osetup []
+  (let [an-records (map read-string 
+			(ds/read-lines 
+			 (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt"))) 
+	greatest-date (last (sort (map :last-date an-records)))]
+    (filter #(and (= (:last-date %) greatest-date) 
+		  (> (:liquidity %) *min-liquidity*)
+		  (> (/ (:avg-range %)  (:last-close %))  *min-range-to-close-ratio*)
+		  (> (:oc-median %) *min-med-oc*)) an-records)))
+
+(defn stscan-analysis []
+  ;fisrt clear
+  (doseq [f (filter #(.endsWith (.getName %) "csv") (.listFiles (new File *data-dir*)))]
+    (.delete f))
+  ; second download and save
+  (doall (vector-pmap  
+	  #(ignore-err (get-stk-file  % *data-dir*))
+	  (vec  (ds/read-lines *sym-file*))))
+  ; then analysis
+  (ds/write-lines (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt")
+		  (map stk-file-analysis
+		       (.listFiles (new File *data-dir*)))))
+	  
+    
 
 ;;;;;;
 
@@ -325,7 +324,7 @@
 (defn get-hist-data [contract durationStr barSizeStr & endDateTime ]
   (let [req-id (get-id)
 	end-date (if endDateTime (parse-date endDateTime) 
-		    (str  (.format (new SimpleDateFormat "yyyyMMdd") (new Date)) " 23:59:59"))]
+		    (str  (format-date "yyyyMMdd")  " 23:59:59"))]
     (sync-bridge req-id 
 		 (fn []
 		   (.reqHistoricalData *eclient* 
