@@ -180,8 +180,8 @@
     (median ocs)))
 
 (def *data-dir* "/home/novosma/Stuff/clojure/data/")
-;(def *sym-file* "/home/novosma/Stuff/clojure/good-syms.txt")
-(def *sym-file* "/home/novosma/Stuff/clojure/good-syms-tmp.txt")
+(def *sym-file* "/home/novosma/Stuff/clojure/good-syms.txt")
+;(def *sym-file* "/home/novosma/Stuff/clojure/good-syms-tmp.txt")
 (def *stk-analysis-file-prefix* "/home/novosma/Stuff/clojure/analysis")
 
 
@@ -190,15 +190,25 @@
       [sym (second (re-find  #"([a-zA-Z]+).csv" (.getName file)))
        hist-data (parse-yhoo-stock-csv file)
        oc (oc-med hist-data)
-       last-date (format-date "yyyyMMdd" (:date (first hist-data)))
-       last-close (:close (first hist-data))
+       last-bar (first hist-data)
+       last-date (format-date "yyyyMMdd" (:date last-bar))       
+       last-close (:close last-bar)
+       last-down-shadow-rat (let [brange (- (:high last-bar) (:low last-bar))]
+			      (if (= range 0) 0
+				 (/  (- (min (:open last-bar) (:close last-bar))
+				     (:low last-bar)) brange)))				  
        liquidity (* (:close (first hist-data)) (:volume (first hist-data)))
+
        avg-range (avg (map  #(- (:high %) (:low %)) hist-data))]
-    {:sym sym :oc-median oc :avg-range avg-range :last-date last-date :last-close last-close :liquidity liquidity}))
+    {:sym sym :oc-median oc :avg-range avg-range :last-date last-date :last-close last-close :liquidity liquidity 
+     :last-dn-sh-rat last-down-shadow-rat}))
 
 (def *min-liquidity* 2000000)
 (def *min-range-to-close-ratio* 0.02)
-(def *min-med-oc* 0.45)
+(def *min-med-oc* 0.5)
+(def *min-dn-sh-rat* 0.3)
+(def *delta-to-avg-range-rat* 0.4) 
+(def *bo-rat* 0.3) 
 
 (defn filter-for-osetup []
   (let [an-records (map read-string 
@@ -206,9 +216,31 @@
 			 (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt"))) 
 	greatest-date (last (sort (map :last-date an-records)))]
     (filter #(and (= (:last-date %) greatest-date) 
-		  (> (:liquidity %) *min-liquidity*)
+		  (> (:liquidity %) *min-liquidity*)		  
 		  (> (/ (:avg-range %)  (:last-close %))  *min-range-to-close-ratio*)
-		  (> (:oc-median %) *min-med-oc*)) an-records)))
+		  (> (:oc-median %) *min-med-oc*)
+		  (> (:last-dn-sh-rat %) *min-dn-sh-rat*)) an-records)))
+
+(def *state-dir* "/home/novosma/Stuff/clojure/")
+
+
+
+
+(def +na+ :NA)
+
+(defn calc-or-setup [an-record]  
+  "Check RT quote and either return the or level or nil or +na+ if the rt quote is unavailable"
+  (let [g-rt-rec (get-rt-quote-ext (:sym an-record))
+	delta  (* *delta-to-avg-range-rat* (:avg-range an-record))
+		
+	gap-level (- (:last-close an-record) delta)]        
+      (when (and g-rt-rec (:open g-rt-rec))
+	(if (< (:open g-rt-rec) gap-level)
+	  (+ (:open g-rt-rec) (* *bo-rat* (:avg-range an-record)))
+	   false))))
+	 
+     
+    
 
 (defn stscan-analysis []
   ;fisrt clear
@@ -223,7 +255,7 @@
 		  (map stk-file-analysis
 		       (.listFiles (new File *data-dir*)))))
 	  
-    
+;;(doall (filter #(= (first %) true) (map (fn [an] (vector (calc-or-setup an) an))  (filter-for-osetup))))    
 
 ;;;;;;
 
