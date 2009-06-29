@@ -238,10 +238,21 @@
 	(if (< (:open g-rt-rec) gap-level)
 	  (+ (:open g-rt-rec) (* *bo-rat* (:avg-range an-record)))
 	   false))))
-	 
-     
-    
 
+(defn check-opens []
+  (vector-pmap (fn [an] {:el-price (calc-or-setup an) :an-record an})  (vec (filter-for-osetup))))
+
+;; (defn  [
+
+;; (defn place-orders []
+;;   (let [recs (check-opens)
+;; 	rec-for-orders (doall (filter #(number? (:el-price %)) @*opens*))
+;; 	rec-to-check  (doall (filter #(= nil (:el-price %)) @*opens*))]
+;; ;    (ds/write 
+    
+    
+    
+	    
 (defn stscan-analysis []
   ;fisrt clear
   (doseq [f (filter #(.endsWith (.getName %) "csv") (.listFiles (new File *data-dir*)))]
