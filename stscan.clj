@@ -182,7 +182,23 @@
 (def *data-dir* "/home/novosma/Stuff/clojure/data/")
 (def *sym-file* "/home/novosma/Stuff/clojure/good-syms.txt")
 ;(def *sym-file* "/home/novosma/Stuff/clojure/good-syms-tmp.txt")
-(def *stk-analysis-file-prefix* "/home/novosma/Stuff/clojure/analysis")
+;; (def *stk-analysis-file-prefix* "/home/novosma/Stuff/clojure/analysis")
+
+(def *states-dir* "/home/novosma/Stuff/clojure/")
+(def *df-str-state*  "yyyyMMddhhmmss")
+;(def *df-state* (new SimpleDateFormat))
+
+
+(defn save-state [state-name data]
+  (with-open [wr (ds/writer (str *states-dir* state-name "-" (format-date *df-str-state*)))]
+    (binding [*out* wr]
+      (prn data))))
+
+(defn restore-state [state-name]
+  (let [files (.listFiles (new File *states-dir*))
+	filt-files (sort-by #(.getName %) (filter #(re-find (re-pattern (str state-name "-\\d{" (count *df-str-state*) "}"))  (.getName %)) files ))]    
+  (read-string (slurp (.getAbsolutePath (last filt-files))))))
+
 
 
 (defn stk-file-analysis [file]
@@ -210,10 +226,10 @@
 (def *delta-to-avg-range-rat* 0.4) 
 (def *bo-rat* 0.3) 
 
+(def *state-stan* "stan")
+
 (defn filter-for-osetup []
-  (let [an-records (map read-string 
-			(ds/read-lines 
-			 (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt"))) 
+  (let [an-records (restore-state *state-stan*)
 	greatest-date (last (sort (map :last-date an-records)))]
     (filter #(and (= (:last-date %) greatest-date) 
 		  (> (:liquidity %) *min-liquidity*)		  
@@ -221,7 +237,18 @@
 		  (> (:oc-median %) *min-med-oc*)
 		  (> (:last-dn-sh-rat %) *min-dn-sh-rat*)) an-records)))
 
-(def *state-dir* "/home/novosma/Stuff/clojure/")
+;; (defn filter-for-osetup []
+;;   (let [an-records (map read-string 
+;; 			(ds/read-lines 
+;; 			 (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt"))) 
+;; 	greatest-date (last (sort (map :last-date an-records)))]
+;;     (filter #(and (= (:last-date %) greatest-date) 
+;; 		  (> (:liquidity %) *min-liquidity*)		  
+;; 		  (> (/ (:avg-range %)  (:last-close %))  *min-range-to-close-ratio*)
+;; 		  (> (:oc-median %) *min-med-oc*)
+;; 		  (> (:last-dn-sh-rat %) *min-dn-sh-rat*)) an-records)))
+
+
 
 
 
@@ -242,14 +269,6 @@
 (defn check-opens []
   (vector-pmap (fn [an] {:el-price (calc-or-setup an) :an-record an})  (vec (filter-for-osetup))))
 
-;; (defn  [
-
-;; (defn place-orders []
-;;   (let [recs (check-opens)
-;; 	rec-for-orders (doall (filter #(number? (:el-price %)) @*opens*))
-;; 	rec-to-check  (doall (filter #(= nil (:el-price %)) @*opens*))]
-;; ;    (ds/write 
-    
     
     
 	    
@@ -262,9 +281,21 @@
 	  #(ignore-err (get-stk-file  % *data-dir*))
 	  (vec  (ds/read-lines *sym-file*))))
   ; then analysis
-  (ds/write-lines (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt")
-		  (map stk-file-analysis
-		       (.listFiles (new File *data-dir*)))))
+  (save-state *state-stan* (vec 	  (map stk-file-analysis
+		       (.listFiles (new File *data-dir*))))))
+
+;; (defn stscan-analysis []
+;;   ;fisrt clear
+;;   (doseq [f (filter #(.endsWith (.getName %) "csv") (.listFiles (new File *data-dir*)))]
+;;     (.delete f))
+;;   ; second download and save
+;;   (doall (vector-pmap  
+;; 	  #(ignore-err (get-stk-file  % *data-dir*))
+;; 	  (vec  (ds/read-lines *sym-file*))))
+;;   ; then analysis
+;;   (ds/write-lines (str *stk-analysis-file-prefix* "-" (format-date "yyyyMMdd") ".txt")
+;; 		  (map stk-file-analysis
+;; 		       (.listFiles (new File *data-dir*)))))
 	  
 ;;(doall (filter #(= (first %) true) (map (fn [an] (vector (calc-or-setup an) an))  (filter-for-osetup))))    
 
@@ -442,35 +473,27 @@
   (bracket-orders "SELL" contract qty eord  close-orders))
 
 
+(def *max-stop-loss-usd* 600)
+(def *max-depo* 10000)
 
+(defn get-qty [el-price stop-price]
+  (let [delta (- el-price stop-price)
+	qty (min (/ *max-depo* el-price) (/ *max-stop-loss-usd* delta))]
+    (* 100 (Math/floor (/ qty 100)))))
+(defn round [number]
+  (/ (Math/round (* 100.0 number)) 100.0))
 
-;; (ds/write-lines "/home/novosma/Stuff/clojure/ocs.txt" (doall (map #(vector % (oc-med (str *nas-dir* % ".csv"))) (take 10  (ds/read-lines "/home/novosma/Stuff/clojure/nas-good.txt")))))
-
-;; (doall (map # (oc-med (str *nas-dir* % ".csv"))   (ds/read-lines "/home/novosma/Stuff/clojure/nas-good.txt")))
-
-;; (oc-med "/home/novosma/Stuff/clojure/nas-data/ORCL.csv")
-
-;; (ds/write-lines "/home/novosma/Stuff/clojure/nas-good.txt" 
-;; 	     (doall (map  #(.getName %)
-;; 	     (filter  good-st-data?
-;; 		      (.listFiles (new java.io.File "/home/novosma/Stuff/clojure/nas-data/"))))))
-;; (ds/write-lines "/home/novosma/Stuff/clojure/nas-good1.txt" 
-;; 		(map #(second (re-find #"(.+)\.csv" %)) (read-lines "/home/novosma/Stuff/clojure/nas-good.txt")))
-
-;(let [bars (parse-yhoo-stock-csv "/home/novosma/Stuff/clojure/nyse-data/ZZ.csv")]
-  
-
-
-;; (write-lines "/home/novosma/Stuff/clojure/good-syms"
-;; 	     (
-
-;(map (fn (s) ((.listFiles (new java.io.Files "/home/novosma/Stuff/clojure/nyse-data"))
-
-
-;; (time (doall (vector-pmap  #(ignore-err (get-stk-file  % "/home/novosma/Stuff/clojure/nas-data")) (vec  (ds/read-lines "/home/novosma/Stuff/clojure/nasdaq-syms-cleared.txt")))))
-	   
-; (map #(calendar (.lastModified %)) (take 10 (.listFiles  (new File "/home/novosma/Stuff/clojure/nyse-data"))))
-	  
-	
-;; (doall (.delete (filter #(= 22 (.get (calendar (.lastModified %)) Calendar/DATE))  (.listFiles  (new File "/home/novosma/Stuff/clojure/nyse-data")))))
-;; (vector-pmap (fn (s) (ignore-err (get-stk-file s "/home/novosma/Stuff/clojure/nyse-data"))) (vec (read-line "/home/novosma/Stuff/clojure/nyse-syms-cleared.txt")))
+(defn place-orders []
+  (let [recs (check-opens)	
+	rec-for-orders (doall (filter #(number? (:el-price %)) recs))
+	rec-to-check  (doall (filter #(= nil (:el-price %)) recs))]
+    (when rec-to-check (save-state "noopen" rec-to-check))
+    (doseq [rec rec-for-orders]      
+      (let [el-price (:el-price rec)
+	    stop-price (- el-price (* *bo-rat* (:avg-range (:an-record rec))))
+	    qty (get-qty el-price stop-price)]
+	;(println (:sym (:an-record rec)) el-price stop-price qty )
+	(when (and (> el-price 0) (> qty 1))
+	  (buy-bracket (stk (:sym (:an-record rec))) qty  (stop (round el-price)) (vector (stop (round stop-price))  (mkt-close))))))))
+      
+      
