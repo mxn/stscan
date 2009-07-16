@@ -112,7 +112,16 @@
      :open 
      (read-string (second (re-find *rt-open-pr-gg-re* page-str)))}))
 
+(def *rt-price-yh-re* #"Last Trade:.*?(\d+.\d+)")
 
+(def *rt-time-yy-re* #"Trade Time:.*?(\d+:\d+[ap]m) ET")
+
+(defn get-rt-quote-ext-yh [sym]
+  (let [page-str (fetch-url (str "http://finance.yahoo.com/q/ecn?s=" (.toUpperCase (str sym))))]
+    {:rt-price
+     (read-string (second (re-find *rt-price-yh-re* page-str)))
+      :time-str
+      (second (re-find *rt-time-yy-re* page-str))}))
 
 (defn mk-kw [string]
   (symbol (str ":" string)))
